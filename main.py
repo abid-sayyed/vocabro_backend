@@ -2,6 +2,7 @@ from flask  import request, jsonify
 from config import app, db
 from model import Book
 from flask import Flask, request, jsonify
+import json
 
 import os
 from flask import Flask, flash, request, redirect, url_for
@@ -30,28 +31,39 @@ def allowed_file(filename):
 
 @app.route('/books', methods=['POST'])
 def create_book():
-    if request.method == 'POST':
-        if 'file' not in request.files:
-            flash('No file part')
-            return redirect(request.url)
-        
-        file = request.files['file']
-        
-        if file.filename == '':
-            flash('No selected file')
-            return redirect(request.url)
-        
-    data = request.json
-    if 'title' not in data or 'fileName' not in data:
-        return jsonify({'error': 'Please provide title and fileName'}), 400
-    book = Book(title=data['title'], fileName=data['fileName'])
-    try:
-        db.session.add(book)
-        db.session.commit()
-    except Exception as e:
-        return jsonify({'error': str(e)}), 400
+    if 'file' not in request.files:
+        return jsonify({'error': 'No file part'}), 400
+
+    file = request.files['file']
     
-    return jsonify(book.to_json(), "Book created successfully")
+    if file.filename == '':
+        return jsonify({'error': 'No selected file'}), 400
+    
+    if file and allowed_file(file.filename):
+        filename = secure_filename(file.filename)
+
+        app.logger.info(f'Saving file {filename} to {app.config["UPLOAD_FOLDER"]}')
+
+        file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
+        
+        jsonData = request.form.get('requestData')
+        requestData = json.loads(jsonData)
+
+        requestData = json.loads(jsonData)
+        title = requestData.get('title')
+
+        if not title:
+            return jsonify({'error': 'Please provide title'}), 400
+
+        # Save title, filename to the database
+        new_book = Book(title=title, fileName=filename)
+        db.session.add(new_book)
+        db.session.commit()
+
+        return jsonify({'message': 'Book uploaded successfully', 'book': new_book.to_json()}), 201
+    else:
+        return jsonify({'error': 'File type not allowed'}), 400
+    
 
 
 

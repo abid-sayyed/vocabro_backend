@@ -6,7 +6,11 @@ from flask import Flask, flash, request, redirect, url_for
 from werkzeug.utils import secure_filename
 
 
-UPLOAD_FOLDER = 'bookUploads'
+
+current_directory = os.path.dirname(os.path.realpath(__file__))
+UPLOAD_FOLDER = os.path.join(current_directory, 'bookUploads')
+
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 app = Flask(__name__)
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
