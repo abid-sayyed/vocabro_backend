@@ -1,7 +1,7 @@
 from flask  import request, jsonify
 from config import app, db
 from model import Book
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, send_file
 import json
 
 import os
@@ -19,6 +19,13 @@ def get_books():
     books = Book.query.all()
     books_json = [book.to_json() for book in books]
     return jsonify(books_json)
+
+@app.route('/books/getbook/<int:id>', methods=['GET'])
+def get_book(id):
+    book = Book.query.get(id)
+    if book is None:
+        return jsonify({'error': 'Book not found'}), 404
+    return jsonify(book.to_json())
 
 
 
@@ -65,9 +72,6 @@ def create_book():
         return jsonify({'error': 'File type not allowed'}), 400
     
 
-
-
-
 @app.route('/books/<int:id>', methods=['PATCH'])    
 def update_book(id):
     data = request.json
@@ -84,6 +88,8 @@ def update_book(id):
         return jsonify({'error': str(e)}), 400
     return jsonify(book.to_json(), "Book updated successfully")
 
+
+
 @app.route('/books/<int:id>', methods=['DELETE'])
 def delete_book(id):
     book = Book.query.get(id)
@@ -92,6 +98,27 @@ def delete_book(id):
     db.session.delete(book)
     db.session.commit()
     return jsonify("Book deleted successfully"), 204
+
+
+@app.route('/books/getbookpdf/<int:book_id>', methods=['GET'])
+def fetch_book(book_id):
+    # Assuming book_id is present in the book database
+    book = Book.query.get(book_id)
+    if book is None:
+        return jsonify({'error': 'Book not found'}), 404
+
+    fileName = book.fileName  # Assuming your Book model has a fileName attribute
+    file_path = os.path.join(app.config['UPLOAD_FOLDER'], fileName)
+
+    if os.path.exists(file_path):
+        try:
+            return send_file(file_path, as_attachment=True)
+        except Exception as e:
+            return jsonify({"error": str(e)}), 500
+    else:
+        return jsonify({"error": "Book file not found"}), 404
+        
+        
 
 
 if __name__ == '__main__':
